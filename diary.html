@@ -173,10 +173,31 @@ body {
 .ci {
   flex: 1; border: none; outline: none;
   background: transparent; color: var(--text);
-  font-size: 15px; line-height: 1.9; resize: none;
+  font-size: 15px; line-height: 1.9;
   font-family: inherit; overflow-y: auto; min-height: 0;
+  word-break: break-word; padding: 4px 0;
 }
-.ci::placeholder { color: var(--t3); }
+.ci:empty:before {
+  content: attr(data-placeholder); color: var(--t3);
+  pointer-events: none; display: block; white-space: pre-line;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex; gap: 3px; padding: 6px 0 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; flex-wrap: wrap; align-items: center;
+}
+.tb-btn {
+  min-width: 28px; height: 28px; padding: 0 7px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: none; cursor: pointer; font-size: 12px;
+  color: var(--t2); font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; flex-shrink: 0;
+}
+.tb-btn:hover { background: var(--bg); color: var(--text); }
+.tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
 
 /* Photo strip */
 .photo-wrap  { flex-shrink: 0; padding: 10px 0 4px; }
@@ -870,7 +891,7 @@ function renderEList(entries) {
       <div class="ei-info">
         <div class="ei-d">${fmtShort(key)}</div>
         <div class="ei-t">${catStr}${esc(e.title || '제목 없음')}</div>
-        <div class="ei-p">${esc(e.content || '')}</div>
+        <div class="ei-p">${esc(stripHtml(e.content || ''))}</div>
       </div>`;
     div.addEventListener('click', () => pickDate(key));
     el.appendChild(div);
@@ -889,7 +910,7 @@ function hasChanges() {
   const activeCat = document.querySelector('.cat-btn.selected')?.dataset.cat || '';
   return pendingPhotos.length > 0 ||
     ti.value.trim() !== (e.title || '') ||
-    ci.value.trim() !== (e.content || '') ||
+    ci.textContent.trim() !== stripHtml(e.content || '') ||
     activeCat !== (e.category || '');
 }
 
@@ -902,6 +923,19 @@ function pickDate(key) {
   renderCal();
   renderEd();
   if (isMobile()) mobTab('write');
+}
+
+/* ════════════════════════════════════════════
+   EDITOR TOOLBAR
+════════════════════════════════════════════ */
+function fmt(cmd, val) {
+  document.getElementById('CI').focus();
+  document.execCommand(cmd, false, val ?? null);
+}
+function stripHtml(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  return d.textContent || '';
 }
 
 /* ════════════════════════════════════════════
@@ -937,8 +971,16 @@ function renderEd() {
       <input id="TI" class="ti" type="text"
         placeholder="오늘의 제목" autocomplete="off"
         value="${esc(e.title || '')}">
-      <textarea id="CI" class="ci"
-        placeholder="오늘 하루는 어땠나요?&#10;&#10;자유롭게 기록해보세요.">${esc(e.content || '')}</textarea>
+      <div class="toolbar">
+        <button class="tb-btn" onmousedown="event.preventDefault();fmt('bold')" title="굵게"><b>B</b></button>
+        <button class="tb-btn" onmousedown="event.preventDefault();fmt('italic')" title="기울임"><i style="font-style:italic">I</i></button>
+        <button class="tb-btn" onmousedown="event.preventDefault();fmt('underline')" title="밑줄"><u>U</u></button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" onmousedown="event.preventDefault();fmt('fontSize','5')" title="크게">A+</button>
+        <button class="tb-btn" onmousedown="event.preventDefault();fmt('fontSize','2')" title="작게">A-</button>
+      </div>
+      <div id="CI" class="ci" contenteditable="true"
+        data-placeholder="오늘 하루는 어땠나요?&#10;&#10;자유롭게 기록해보세요."></div>
       <div class="photo-wrap">
         <div class="photo-strip" id="photoStrip"></div>
       </div>
@@ -958,9 +1000,21 @@ function renderEd() {
     });
   });
 
-  document.getElementById('CI').addEventListener('input', function() {
-    document.getElementById('CC').textContent = this.value.length + '자';
+  const ciEl = document.getElementById('CI');
+  if (e.content) {
+    if (/<[a-z]/i.test(e.content)) {
+      ciEl.innerHTML = e.content;
+    } else {
+      ciEl.innerHTML = e.content
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    }
+  }
+  document.getElementById('CC').textContent = ciEl.textContent.length + '자';
+  ciEl.addEventListener('input', function() {
+    document.getElementById('CC').textContent = this.textContent.length + '자';
   });
+
   document.getElementById('BS').addEventListener('click', doSave);
   const bd = document.getElementById('BD');
   if (bd) bd.addEventListener('click', doDelete);
@@ -1073,13 +1127,15 @@ async function processPendingPhotos() {
 ════════════════════════════════════════════ */
 async function doSave() {
   const title   = document.getElementById('TI').value.trim();
-  const content = document.getElementById('CI').value.trim();
+  const ciEl    = document.getElementById('CI');
+  const content = ciEl.innerHTML;
+  const contentText = ciEl.textContent.trim();
 
   const existing     = loadLocal()[sel] || {};
   const existPhotos  = existing.photos || [];
   const hasPending   = pendingPhotos.length > 0;
 
-  if (!title && !content && !hasPending && !existPhotos.length) {
+  if (!title && !contentText && !hasPending && !existPhotos.length) {
     toast('내용을 입력해주세요'); return;
   }
 
