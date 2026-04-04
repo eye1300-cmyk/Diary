@@ -118,6 +118,19 @@ body {
 .cat-stat  { display: flex; align-items: center; gap: 3px; background: var(--bg); border-radius: 8px; padding: 4px 8px; font-size: 11px; color: var(--t2); }
 .cat-stat-n { font-weight: 700; color: var(--primary); margin-left: 2px; }
 
+/* Date entry list */
+.date-elist { flex-shrink: 0; border-top: 1px solid var(--border); display: none; max-height: 180px; overflow-y: auto; }
+.date-elist.open { display: block; }
+.del-hd { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px 3px; }
+.del-hd-t { font-size: 10px; font-weight: 600; color: var(--t3); letter-spacing: .5px; text-transform: uppercase; }
+.del-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; transition: background .12s; }
+.del-item:hover { background: var(--bg); }
+.del-item.act { background: var(--bg); border-left: 2px solid var(--primary); padding-left: 10px; }
+.del-item-icon { font-size: 15px; flex-shrink: 0; }
+.del-item-t { font-size: 12px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; min-width: 0; color: var(--text); }
+.del-add { display: flex; align-items: center; gap: 5px; padding: 6px 12px 8px; cursor: pointer; color: var(--primary); font-size: 12px; font-weight: 600; transition: background .12s; }
+.del-add:hover { background: var(--bg); }
+
 /* Entry list */
 .elist { flex: 1; overflow-y: auto; padding: 8px 12px; border-top: 1px solid var(--border); }
 .el-hd {
@@ -498,6 +511,7 @@ projectId: "myapp",
       </div>
       <div class="dgrid" id="DG"></div>
     </div>
+    <div class="date-elist" id="DEL"><div id="DEL_inner"></div></div>
     <div class="stats">
       <div class="stat"><div class="sn" id="SM">0</div><div class="sl">이번 달</div></div>
       <div class="stat"><div class="sn" id="ST">0</div><div class="sl">전체</div></div>
@@ -561,8 +575,38 @@ let db = null;
 let useFirebase = false;
 let syncKey = '';
 
+let selEntry = null; // selected entry ID within the date
+
 let pendingPhotos = []; // {file, previewUrl} — photos selected but not yet saved
 let firstFbLoad = true; // pick today on first Firebase data load
+
+/* ── Entry ID helpers ── */
+function genEntryId() { return 'e_' + Date.now(); }
+
+// Returns {entryId: entryData} for a date, migrating old single-entry format
+function getDateEntries(dateKey) {
+  const all = loadLocal();
+  const raw = all[dateKey];
+  if (!raw) return {};
+  if (raw.title !== undefined || raw.content !== undefined || raw.photos !== undefined) {
+    const id = 'e_' + (raw.saved ? new Date(raw.saved).getTime() : Date.now());
+    const migrated = { [id]: raw };
+    all[dateKey] = migrated;
+    storeLocal(all);
+    return migrated;
+  }
+  return raw;
+}
+
+// Same as getDateEntries but without saving migration (for rendering)
+function readDateEntries(raw) {
+  if (!raw) return {};
+  if (raw.title !== undefined || raw.content !== undefined || raw.photos !== undefined) {
+    const id = 'e_' + (raw.saved ? new Date(raw.saved).getTime() : Date.now());
+    return { [id]: raw };
+  }
+  return raw;
+}
 
 /* ════════════════════════════════════════════
    BOOT
@@ -625,11 +669,11 @@ function goLocal() {
   pickDate(todayKey());
 }
 
-async function fbWrite(dateKey, data) {
+async function fbWrite(dateKey, entryId, data) {
   if (!db) return;
   setSyncDot('syncing');
   try {
-    await db.ref(`${syncKey}/entries/${dateKey}`).set(data);
+    await db.ref(`${syncKey}/entries/${dateKey}/${entryId}`).set(data);
     setSyncDot('online');
   } catch (e) {
     setSyncDot('offline');
@@ -637,9 +681,9 @@ async function fbWrite(dateKey, data) {
   }
 }
 
-async function fbDelete(dateKey) {
+async function fbDelete(dateKey, entryId) {
   if (!db) return;
-  try { await db.ref(`${syncKey}/entries/${dateKey}`).remove(); } catch {}
+  try { await db.ref(`${syncKey}/entries/${dateKey}/${entryId}`).remove(); } catch {}
 }
 
 /* ════════════════════════════════════════════
@@ -767,18 +811,22 @@ function setSyncDot(state) {
 function loadLocal()  { try { return JSON.parse(localStorage.getItem(LS_DATA)) || {}; } catch { return {}; } }
 function storeLocal(d) { try { localStorage.setItem(LS_DATA, JSON.stringify(d)); } catch(e) { toast('저장 실패: 저장 공간 부족'); } }
 
-async function saveEntryData(dateKey, data) {
+async function saveEntryData(dateKey, entryId, data) {
   const all = loadLocal();
-  all[dateKey] = data;
+  if (!all[dateKey] || all[dateKey].title !== undefined) all[dateKey] = {};
+  all[dateKey][entryId] = data;
   storeLocal(all);
-  if (useFirebase) await fbWrite(dateKey, data);
+  if (useFirebase) await fbWrite(dateKey, entryId, data);
 }
 
-async function deleteEntryData(dateKey) {
+async function deleteEntryData(dateKey, entryId) {
   const all = loadLocal();
-  delete all[dateKey];
+  if (all[dateKey]) {
+    delete all[dateKey][entryId];
+    if (Object.keys(all[dateKey]).length === 0) delete all[dateKey];
+  }
   storeLocal(all);
-  if (useFirebase) await fbDelete(dateKey);
+  if (useFirebase) await fbDelete(dateKey, entryId);
 }
 
 /* ════════════════════════════════════════════
@@ -824,7 +872,8 @@ function renderCal() {
     dg.appendChild(mkCell(pd-i, null, 0, false, false, false));
   for (let d = 1; d <= dim; d++) {
     const key = dk(vy, vm, d);
-    dg.appendChild(mkCell(d, key, new Date(vy,vm,d).getDay(), key===tKey, key===sel, !!entries[key]));
+    const hasE = !!entries[key] && Object.keys(readDateEntries(entries[key])).length > 0;
+    dg.appendChild(mkCell(d, key, new Date(vy,vm,d).getDay(), key===tKey, key===sel, hasE));
   }
   const rem = (7 - (fd+dim)%7) % 7;
   for (let d = 1; d <= rem; d++) dg.appendChild(mkCell(d, null, 0, false, false, false));
@@ -855,8 +904,10 @@ function mkCell(d, key, dow, isToday, isSel, hasE) {
 function renderStats(entries) {
   const keys = Object.keys(entries);
   const pfx  = `${vy}-${String(vm+1).padStart(2,'0')}`;
-  document.getElementById('SM').textContent = keys.filter(k => k.startsWith(pfx)).length;
-  document.getElementById('ST').textContent = keys.length;
+  // Count individual entries (not just dates)
+  const countEntries = (ks) => ks.reduce((s, k) => s + Object.keys(readDateEntries(entries[k])).length, 0);
+  document.getElementById('SM').textContent = countEntries(keys.filter(k => k.startsWith(pfx)));
+  document.getElementById('ST').textContent = countEntries(keys);
   let streak=0, d=new Date(TODAY);
   while (true) {
     const k = dk(d.getFullYear(), d.getMonth(), d.getDate());
@@ -866,7 +917,12 @@ function renderStats(entries) {
 
   const cs = document.getElementById('CS');
   cs.innerHTML = CATEGORIES.map(c => {
-    const count = keys.filter(k => (entries[k].category || '') === c.id).length;
+    let count = 0;
+    keys.forEach(k => {
+      Object.values(readDateEntries(entries[k])).forEach(e => {
+        if ((e.category || '') === c.id) count++;
+      });
+    });
     return `<div class="cat-stat">${c.icon} ${c.id}<span class="cat-stat-n">${count}</span></div>`;
   }).join('');
 }
@@ -882,19 +938,23 @@ function renderEList(entries) {
     el.innerHTML = '<div style="color:var(--t3);font-size:12px;text-align:center;padding:14px 0">이번 달 일기가 없습니다</div>';
     return;
   }
-  items.forEach(([key, e]) => {
-    const div = document.createElement('div');
-    div.className = 'ei' + (key===sel ? ' act' : '');
-    const ph = e.photos && e.photos[0];
-    const catStr = e.category ? `<span class="ei-cat">${getCatIcon(e.category)} ${e.category}</span>` : '';
-    div.innerHTML = `${ph ? `<img class="ei-thumb" src="${ph}" alt="">` : ''}
-      <div class="ei-info">
-        <div class="ei-d">${fmtShort(key)}</div>
-        <div class="ei-t">${catStr}${esc(e.title || '제목 없음')}</div>
-        <div class="ei-p">${esc(stripHtml(e.content || ''))}</div>
-      </div>`;
-    div.addEventListener('click', () => pickDate(key));
-    el.appendChild(div);
+  items.forEach(([key, dateVal]) => {
+    const dateEntries = Object.entries(readDateEntries(dateVal))
+      .sort(([a],[b]) => a.localeCompare(b));
+    dateEntries.forEach(([entryId, e]) => {
+      const div = document.createElement('div');
+      div.className = 'ei' + (key===sel && entryId===selEntry ? ' act' : '');
+      const ph = e.photos && e.photos[0];
+      const catStr = e.category ? `<span class="ei-cat">${getCatIcon(e.category)} ${e.category}</span>` : '';
+      div.innerHTML = `${ph ? `<img class="ei-thumb" src="${ph}" alt="">` : ''}
+        <div class="ei-info">
+          <div class="ei-d">${fmtShort(key)}</div>
+          <div class="ei-t">${catStr}${esc(e.title || '제목 없음')}</div>
+          <div class="ei-p">${esc(stripHtml(e.content || ''))}</div>
+        </div>`;
+      div.addEventListener('click', () => pickEntry(key, entryId));
+      el.appendChild(div);
+    });
   });
 }
 
@@ -902,8 +962,8 @@ function renderEList(entries) {
    DATE SELECTION
 ════════════════════════════════════════════ */
 function hasChanges() {
-  if (!sel) return false;
-  const e  = loadLocal()[sel] || {};
+  if (!sel || !selEntry) return false;
+  const e  = getDateEntries(sel)[selEntry] || {};
   const ti = document.getElementById('TI');
   const ci = document.getElementById('CI');
   if (!ti || !ci) return false;
@@ -915,14 +975,72 @@ function hasChanges() {
 }
 
 function pickDate(key) {
-  if (sel && sel !== key && hasChanges()) {
+  if (selEntry && hasChanges()) {
     if (!confirm('저장하지 않은 내용이 있습니다. 이동할까요?')) return;
   }
   pendingPhotos = [];
   sel = key;
+  selEntry = null;
   renderCal();
+  renderDateEntries(key);
+  renderEd();
+}
+
+function pickEntry(dateKey, entryId) {
+  if (selEntry && selEntry !== entryId && hasChanges()) {
+    if (!confirm('저장하지 않은 내용이 있습니다. 이동할까요?')) return;
+  }
+  pendingPhotos = [];
+  sel = dateKey;
+  selEntry = entryId;
+  renderDateEntries(dateKey);
   renderEd();
   if (isMobile()) mobTab('write');
+}
+
+function addNewEntry(dateKey) {
+  if (selEntry && hasChanges()) {
+    if (!confirm('저장하지 않은 내용이 있습니다. 이동할까요?')) return;
+  }
+  pendingPhotos = [];
+  sel = dateKey;
+  selEntry = genEntryId();
+  renderDateEntries(dateKey);
+  renderEd();
+  if (isMobile()) mobTab('write');
+}
+
+function renderDateEntries(dateKey) {
+  const del   = document.getElementById('DEL');
+  const inner = document.getElementById('DEL_inner');
+  if (!dateKey) { del.classList.remove('open'); return; }
+
+  const entries = getDateEntries(dateKey);
+  const items   = Object.entries(entries).sort(([a],[b]) => a.localeCompare(b));
+
+  del.classList.add('open');
+  inner.innerHTML = '';
+
+  const hd = document.createElement('div');
+  hd.className = 'del-hd';
+  hd.innerHTML = `<span class="del-hd-t">${fmtShort(dateKey)} 일기 목록</span>`;
+  inner.appendChild(hd);
+
+  items.forEach(([id, e]) => {
+    const div = document.createElement('div');
+    div.className = 'del-item' + (id === selEntry ? ' act' : '');
+    const icon = e.category ? getCatIcon(e.category) : '📝';
+    div.innerHTML = `<span class="del-item-icon">${icon}</span>
+      <span class="del-item-t">${esc(e.title || '제목 없음')}</span>`;
+    div.addEventListener('click', () => pickEntry(dateKey, id));
+    inner.appendChild(div);
+  });
+
+  const addBtn = document.createElement('div');
+  addBtn.className = 'del-add';
+  addBtn.innerHTML = '＋ 새 일기 추가';
+  addBtn.addEventListener('click', () => addNewEntry(dateKey));
+  inner.appendChild(addBtn);
 }
 
 /* ════════════════════════════════════════════
@@ -944,7 +1062,7 @@ function stripHtml(html) {
 function renderEd() {
   const rp = document.getElementById('RP');
   const es = document.getElementById('ES');
-  if (!sel) {
+  if (!sel || !selEntry) {
     es.style.display = '';
     const ew = rp.querySelector('.edwrap');
     if (ew) ew.remove();
@@ -954,7 +1072,7 @@ function renderEd() {
   let ew = rp.querySelector('.edwrap');
   if (!ew) { ew = document.createElement('div'); ew.className='edwrap'; rp.appendChild(ew); }
 
-  const e = loadLocal()[sel] || {};
+  const e = getDateEntries(sel)[selEntry] || {};
   const hasEntry = !!(e.title || e.content || (e.photos && e.photos.length));
 
   const catHtml = CATEGORIES.map(c =>
@@ -1054,7 +1172,7 @@ function renderPhotoStrip(savedPhotos) {
     del.addEventListener('click', () => {
       URL.revokeObjectURL(pp.previewUrl);
       pendingPhotos.splice(i, 1);
-      renderPhotoStrip((loadLocal()[sel]||{}).photos||[]);
+      renderPhotoStrip((getDateEntries(sel)[selEntry]||{}).photos||[]);
     });
     item.appendChild(img); item.appendChild(del);
     strip.appendChild(item);
@@ -1072,12 +1190,10 @@ async function removePhoto(idx, savedPhotos) {
   if (!confirm('이 사진을 삭제할까요?')) return;
   const photos = [...savedPhotos];
   photos.splice(idx, 1);
-  const all = loadLocal();
-  const e   = all[sel] || {};
-  e.photos  = photos;
-  all[sel]  = e;
-  storeLocal(all);
-  if (useFirebase) await fbWrite(sel, e);
+  const entries = getDateEntries(sel);
+  const e = entries[selEntry] || {};
+  e.photos = photos;
+  await saveEntryData(sel, selEntry, e);
   renderPhotoStrip(photos);
   renderCal();
 }
@@ -1108,7 +1224,7 @@ document.getElementById('photoInput').addEventListener('change', async function(
     const previewUrl = URL.createObjectURL(file);
     pendingPhotos.push({ file, previewUrl });
   }
-  renderPhotoStrip((loadLocal()[sel]||{}).photos||[]);
+  renderPhotoStrip((getDateEntries(sel)[selEntry]||{}).photos||[]);
 });
 
 async function processPendingPhotos() {
@@ -1131,7 +1247,7 @@ async function doSave() {
   const content = ciEl.innerHTML;
   const contentText = ciEl.textContent.trim();
 
-  const existing     = loadLocal()[sel] || {};
+  const existing     = getDateEntries(sel)[selEntry] || {};
   const existPhotos  = existing.photos || [];
   const hasPending   = pendingPhotos.length > 0;
 
@@ -1155,8 +1271,9 @@ async function doSave() {
       saved:  new Date().toISOString()
     };
 
-    await saveEntryData(sel, data);
+    await saveEntryData(sel, selEntry, data);
     renderCal();
+    renderDateEntries(sel);
     renderEd();
     toast('저장되었습니다 ✓');
   } finally {
@@ -1167,10 +1284,11 @@ async function doSave() {
 
 async function doDelete() {
   if (!confirm('이 일기를 삭제할까요?')) return;
-  await deleteEntryData(sel);
+  await deleteEntryData(sel, selEntry);
   pendingPhotos = [];
-  sel = null;
+  selEntry = null;
   renderCal();
+  renderDateEntries(sel);
   renderEd();
   if (isMobile()) mobTab('cal');
   toast('삭제되었습니다');
