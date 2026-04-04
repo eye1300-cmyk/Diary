@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>일기장 홈 화면 아이콘 만들기</title>
+  <style>
+    :root { --primary: #4a7c59; --bg: #f7f2eb; --border: #e8dfd2; --text: #1c1c1e; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); }
+
+    header { background: #fff; border-bottom: 1px solid var(--border); padding: 22px 28px; }
+    header h1 { font-size: 22px; font-weight: 700; margin-bottom: 5px; }
+    header p  { font-size: 13px; color: #6c6c70; line-height: 1.5; }
+
+    .grid {
+      display: flex; gap: 24px; padding: 32px 28px;
+      flex-wrap: wrap; justify-content: center;
+    }
+
+    .card {
+      background: #fff; border-radius: 20px; padding: 24px 20px 20px;
+      text-align: center; border: 1px solid var(--border);
+      width: 210px; transition: box-shadow .2s;
+    }
+    .card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.09); }
+
+    .card canvas {
+      width: 150px; height: 150px; display: block; margin: 0 auto 14px;
+      border-radius: 33px;
+      box-shadow: 0 6px 22px rgba(0,0,0,0.16);
+      cursor: pointer; transition: transform .18s;
+    }
+    .card canvas:hover { transform: scale(1.05); }
+
+    .card-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .card-desc { font-size: 12px; color: #888; margin-bottom: 14px; line-height: 1.5; }
+
+    .dl-btn {
+      display: block; width: 100%; padding: 10px;
+      border-radius: 10px; background: var(--primary);
+      color: #fff; border: none; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: background .15s;
+    }
+    .dl-btn:hover  { background: #3d6b4a; }
+    .dl-btn:active { transform: scale(.97); }
+
+    /* Guide */
+    .guide {
+      background: #fff; border-radius: 20px; margin: 0 28px 32px;
+      padding: 24px 28px; border: 1px solid var(--border);
+    }
+    .guide h2 { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+
+    .steps { display: flex; flex-direction: column; gap: 14px; }
+    .step  { display: flex; gap: 14px; align-items: flex-start; }
+    .step-n {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-t { font-size: 13px; color: #444; line-height: 1.65; }
+    .step-t code {
+      background: var(--bg); border-radius: 5px;
+      padding: 2px 7px; font-size: 12px; font-family: monospace;
+    }
+    .step-t b { color: var(--text); }
+
+    .tip {
+      margin-top: 18px; padding: 12px 16px;
+      background: #fffbec; border: 1px solid #ffe082;
+      border-radius: 10px; font-size: 12px; color: #7a5a10; line-height: 1.6;
+    }
+
+    @media (max-width: 520px) {
+      header { padding: 18px; }
+      .grid  { padding: 20px 16px; gap: 16px; }
+      .guide { margin: 0 16px 24px; padding: 18px; }
+      .card  { width: 160px; padding: 18px 14px 16px; }
+      .card canvas { width: 120px; height: 120px; border-radius: 27px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📱 홈 화면 아이콘 만들기</h1>
+  <p>아이폰 홈 화면에 추가할 때 표시될 아이콘을 선택하고 다운로드하세요</p>
+</header>
+
+<div class="grid">
+  <div class="card">
+    <canvas id="c1" width="512" height="512" onclick="download('c1','초록_정원')"></canvas>
+    <div class="card-name">🌿 초록 정원</div>
+    <div class="card-desc">앱 테마 컬러에 맞는<br>보태니컬 다이어리</div>
+    <button class="dl-btn" onclick="download('c1','초록_정원')">⬇ 다운로드</button>
+  </div>
+  <div class="card">
+    <canvas id="c2" width="512" height="512" onclick="download('c2','벚꽃_다이어리')"></canvas>
+    <div class="card-name">🌸 벚꽃 다이어리</div>
+    <div class="card-desc">봄날의 감성을 담은<br>벚꽃 테마 아이콘</div>
+    <button class="dl-btn" onclick="download('c2','벚꽃_다이어리')">⬇ 다운로드</button>
+  </div>
+  <div class="card">
+    <canvas id="c3" width="512" height="512" onclick="download('c3','달빛_노트')"></canvas>
+    <div class="card-name">🌙 달빛 노트</div>
+    <div class="card-desc">밤하늘의 달과 별이<br>어우러진 감성 아이콘</div>
+    <button class="dl-btn" onclick="download('c3','달빛_노트')">⬇ 다운로드</button>
+  </div>
+</div>
+
+<div class="guide">
+  <h2>🚀 적용 방법 (한 번만 하면 됩니다)</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-t">원하는 아이콘 <b>다운로드</b> → 파일명을 <code>apple-touch-icon.png</code> 으로 바꾸기</div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-t">GitHub 저장소에 <code>apple-touch-icon.png</code> 업로드 (diary.html과 같은 폴더)</div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-t">아이폰 사파리에서 일기장 주소 열기 → 하단 <b>공유 버튼(□↑)</b> → <b>홈 화면에 추가</b></div>
+    </div>
+    <div class="step">
+      <div class="step-n">4</div>
+      <div class="step-t">홈 화면에 예쁜 아이콘이 생겼습니다 ✓</div>
+    </div>
+  </div>
+  <div class="tip">
+    💡 <b>이미 홈 화면에 추가했다면?</b> 기존 아이콘을 길게 눌러 삭제한 뒤 다시 추가해야 새 아이콘이 반영됩니다.
+  </div>
+</div>
+
+<script>
+/* ── 공통 유틸 ── */
+function rr(g, x, y, w, h, r) {
+  g.beginPath();
+  if (g.roundRect) {
+    g.roundRect(x, y, w, h, r);
+  } else {
+    g.moveTo(x+r, y);
+    g.arcTo(x+w, y,   x+w, y+h, r);
+    g.arcTo(x+w, y+h, x,   y+h, r);
+    g.arcTo(x,   y+h, x,   y,   r);
+    g.arcTo(x,   y,   x+r, y,   r);
+  }
+  g.closePath();
+}
+function fill(g, x, y, w, h, r, style) { rr(g,x,y,w,h,r); g.fillStyle=style; g.fill(); }
+function sh(g, c='rgba(0,0,0,0.28)', b=20, ox=6, oy=10) {
+  g.shadowColor=c; g.shadowBlur=b; g.shadowOffsetX=ox; g.shadowOffsetY=oy;
+}
+function noSh(g) { g.shadowColor='transparent'; g.shadowBlur=0; g.shadowOffsetX=0; g.shadowOffsetY=0; }
+function ln(g, x1, y1, x2, y2, color, lw) {
+  g.strokeStyle=color; g.lineWidth=lw; g.lineCap='round';
+  g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke();
+}
+
+/* ══════════════════════════════════════════
+   아이콘 1 — 초록 정원
+══════════════════════════════════════════ */
+function drawGreen(canvas) {
+  const g = canvas.getContext('2d');
+  const s = canvas.width;
+
+  /* 배경 */
+  const bg = g.createLinearGradient(0, 0, s*0.8, s);
+  bg.addColorStop(0, '#5e8a6c'); bg.addColorStop(1, '#2e5940');
+  fill(g, 0, 0, s, s, s*0.22, bg);
+
+  const gl = g.createRadialGradient(s*0.3, s*0.25, 0, s*0.5, s*0.5, s*0.65);
+  gl.addColorStop(0, 'rgba(255,255,255,0.13)'); gl.addColorStop(1, 'rgba(0,0,0,0)');
+  fill(g, 0, 0, s, s, s*0.22, gl);
+
+  /* 책 본체 */
+  sh(g, 'rgba(0,0,0,0.32)', s*0.06, s*0.02, s*0.04);
+  fill(g, s*0.17, s*0.13, s*0.66, s*0.74, s*0.04, '#f9f4ea');
+  noSh(g);
+
+  /* 책등(spine) */
+  g.save(); rr(g, s*0.17, s*0.13, s*0.10, s*0.74, s*0.04); g.clip();
+  const sp = g.createLinearGradient(s*0.17, 0, s*0.27, 0);
+  sp.addColorStop(0, '#b55a2c'); sp.addColorStop(0.45, '#d0703a'); sp.addColorStop(1, '#b55a2c');
+  g.fillStyle = sp; g.fill(); g.restore();
+  ln(g, s*0.27, s*0.15, s*0.27, s*0.86, 'rgba(0,0,0,0.08)', s*0.006);
+
+  /* 텍스트 줄 */
+  const lx1=s*0.31, lx2=s*0.78;
+  [[s*0.37,lx2],[s*0.47,lx2],[s*0.57,lx2],[s*0.67,lx1+(lx2-lx1)*0.55]].forEach(([y,x2])=>{
+    ln(g, lx1, y, x2, y, 'rgba(120,90,60,0.16)', s*0.022);
+  });
+
+  /* 책갈피 리본 */
+  g.beginPath();
+  g.moveTo(s*0.69, s*0.13); g.lineTo(s*0.78, s*0.13);
+  g.lineTo(s*0.78, s*0.30); g.lineTo(s*0.735, s*0.255); g.lineTo(s*0.69, s*0.30);
+  g.closePath(); g.fillStyle='#c4693a'; g.fill();
+
+  /* 꽃 */
+  const fx=s*0.56, fy=s*0.30, fr=s*0.074;
+  for (let i=0; i<5; i++) {
+    const a = i*Math.PI*2/5 - Math.PI/2;
+    g.beginPath();
+    g.ellipse(fx+Math.cos(a)*fr, fy+Math.sin(a)*fr, fr*0.65, fr*0.38, a, 0, Math.PI*2);
+    g.fillStyle = i%2 ? '#f5aac0' : '#f8c4d4'; g.fill();
+  }
+  const cg = g.createRadialGradient(fx, fy, 0, fx, fy, fr*0.42);
+  cg.addColorStop(0, '#ffe464'); cg.addColorStop(1, '#f9a825');
+  g.beginPath(); g.arc(fx, fy, fr*0.4, 0, Math.PI*2); g.fillStyle=cg; g.fill();
+
+  /* 잎사귀 */
+  [[fx-s*0.09, fy+s*0.03, -0.65, '#6a9e72'],
+   [fx-s*0.07, fy+s*0.08,  0.40, '#528c5c']].forEach(([lx,ly,la,lc])=>{
+    g.beginPath(); g.ellipse(lx, ly, s*0.055, s*0.025, la, 0, Math.PI*2);
+    g.fillStyle=lc; g.fill();
+  });
+}
+
+/* ══════════════════════════════════════════
+   아이콘 2 — 벚꽃 다이어리
+══════════════════════════════════════════ */
+function drawCherry(canvas) {
+  const g = canvas.getContext('2d');
+  const s = canvas.width;
+
+  /* 배경 */
+  const bg = g.createLinearGradient(0, 0, s, s);
+  bg.addColorStop(0, '#9b6fad'); bg.addColorStop(1, '#6040a0');
+  fill(g, 0, 0, s, s, s*0.22, bg);
+  const gl = g.createRadialGradient(s*0.28, s*0.22, 0, s*0.5, s*0.5, s*0.68);
+  gl.addColorStop(0, 'rgba(255,255,255,0.14)'); gl.addColorStop(1, 'rgba(0,0,0,0)');
+  fill(g, 0, 0, s, s, s*0.22, gl);
+
+  /* 책 본체 */
+  sh(g, 'rgba(0,0,0,0.3)', s*0.06, s*0.02, s*0.04);
+  fill(g, s*0.16, s*0.18, s*0.67, s*0.65, s*0.04, '#fff8f6');
+  noSh(g);
+
+  /* 책등 */
+  g.save(); rr(g, s*0.16, s*0.18, s*0.10, s*0.65, s*0.04); g.clip();
+  const sp = g.createLinearGradient(s*0.16, 0, s*0.26, 0);
+  sp.addColorStop(0, '#c86898'); sp.addColorStop(0.5, '#e080b0'); sp.addColorStop(1, '#c86898');
+  g.fillStyle=sp; g.fill(); g.restore();
+  ln(g, s*0.26, s*0.20, s*0.26, s*0.82, 'rgba(0,0,0,0.07)', s*0.006);
+
+  /* 텍스트 줄 */
+  const lx1=s*0.30, lx2=s*0.77;
+  [[s*0.47,lx2],[s*0.55,lx2],[s*0.63,lx2],[s*0.71,lx1+(lx2-lx1)*0.6]].forEach(([y,x2])=>{
+    ln(g, lx1, y, x2, y, 'rgba(160,80,120,0.13)', s*0.020);
+  });
+
+  /* 가지 */
+  g.lineCap='round'; g.lineJoin='round';
+  g.strokeStyle='#6e3824'; g.lineWidth=s*0.024;
+  g.beginPath(); g.moveTo(s*0.26, s*0.84); g.quadraticCurveTo(s*0.40, s*0.54, s*0.57, s*0.33); g.stroke();
+  g.lineWidth=s*0.017;
+  g.beginPath(); g.moveTo(s*0.42, s*0.56); g.quadraticCurveTo(s*0.54, s*0.48, s*0.60, s*0.54); g.stroke();
+  g.lineWidth=s*0.013;
+  g.beginPath(); g.moveTo(s*0.51, s*0.43); g.quadraticCurveTo(s*0.63, s*0.37, s*0.67, s*0.46); g.stroke();
+
+  /* 벚꽃 */
+  [[s*0.57,s*0.33],[s*0.61,s*0.53],[s*0.67,s*0.45],[s*0.35,s*0.63]].forEach(([bx,by])=>{
+    for (let i=0; i<5; i++) {
+      const a = i*Math.PI*2/5;
+      g.beginPath();
+      g.ellipse(bx+Math.cos(a)*s*0.047, by+Math.sin(a)*s*0.047, s*0.040, s*0.023, a, 0, Math.PI*2);
+      g.fillStyle = i%2 ? '#ffb8cc' : '#ffd0de'; g.fill();
+    }
+    g.beginPath(); g.arc(bx, by, s*0.019, 0, Math.PI*2);
+    g.fillStyle='#ffe8a0'; g.fill();
+    for (let i=0; i<5; i++) {
+      const a = i*Math.PI*2/5;
+      g.beginPath(); g.arc(bx+Math.cos(a)*s*0.027, by+Math.sin(a)*s*0.027, s*0.007, 0, Math.PI*2);
+      g.fillStyle='#f0a040'; g.fill();
+    }
+  });
+
+  /* 흩날리는 꽃잎 */
+  [[s*0.73,s*0.28, 0.3],[s*0.79,s*0.54,-0.5],[s*0.70,s*0.70, 0.8],[s*0.22,s*0.36,-0.3]].forEach(([px,py,pa])=>{
+    g.beginPath(); g.ellipse(px, py, s*0.026, s*0.016, pa, 0, Math.PI*2);
+    g.fillStyle='rgba(255,180,210,0.55)'; g.fill();
+  });
+}
+
+/* ══════════════════════════════════════════
+   아이콘 3 — 달빛 노트
+══════════════════════════════════════════ */
+function drawMoon(canvas) {
+  const g = canvas.getContext('2d');
+  const s = canvas.width;
+
+  /* 배경 */
+  const bg = g.createLinearGradient(0, 0, s*0.6, s);
+  bg.addColorStop(0, '#1e2a4a'); bg.addColorStop(1, '#0d1628');
+  fill(g, 0, 0, s, s, s*0.22, bg);
+
+  /* 별 (고정 좌표) */
+  [
+    [0.20,0.17,2.5,0.85],[0.76,0.13,2.0,0.72],[0.86,0.36,1.5,0.65],
+    [0.12,0.44,1.6,0.78],[0.89,0.59,2.0,0.88],[0.07,0.71,1.8,0.70],
+    [0.83,0.79,1.4,0.60],[0.40,0.09,1.8,0.80],[0.64,0.07,1.2,0.65],
+    [0.54,0.90,1.4,0.62],[0.24,0.83,1.2,0.58],[0.50,0.19,1.0,0.55]
+  ].forEach(([sx,sy,sr,op])=>{
+    g.beginPath(); g.arc(s*sx, s*sy, sr, 0, Math.PI*2);
+    g.fillStyle=`rgba(255,240,180,${op})`; g.fill();
+  });
+
+  /* 달 (초승달) */
+  const mx=s*0.78, my=s*0.22, mr=s*0.115;
+  // 달빛 글로우
+  const mg = g.createRadialGradient(mx, my, 0, mx, my, mr*1.7);
+  mg.addColorStop(0, 'rgba(255,220,100,0.22)'); mg.addColorStop(1, 'rgba(255,220,100,0)');
+  g.beginPath(); g.arc(mx, my, mr*1.7, 0, Math.PI*2); g.fillStyle=mg; g.fill();
+  // 달 본체
+  g.beginPath(); g.arc(mx, my, mr, 0, Math.PI*2);
+  g.fillStyle='#ffe084'; g.fill();
+  // 초승달 컷아웃
+  g.beginPath(); g.arc(mx+mr*0.44, my-mr*0.08, mr*0.80, 0, Math.PI*2);
+  g.fillStyle='#131d38'; g.fill();
+
+  /* 책 본체 */
+  sh(g, 'rgba(0,0,0,0.5)', s*0.07, s*0.025, s*0.045);
+  fill(g, s*0.17, s*0.30, s*0.64, s*0.58, s*0.04, '#f5eedf');
+  noSh(g);
+
+  /* 책등 */
+  g.save(); rr(g, s*0.17, s*0.30, s*0.095, s*0.58, s*0.04); g.clip();
+  const sp = g.createLinearGradient(s*0.17, 0, s*0.265, 0);
+  sp.addColorStop(0, '#8a6820'); sp.addColorStop(0.5, '#c49a28'); sp.addColorStop(1, '#8a6820');
+  g.fillStyle=sp; g.fill(); g.restore();
+  ln(g, s*0.265, s*0.32, s*0.265, s*0.87, 'rgba(200,160,50,0.4)', s*0.006);
+
+  /* 텍스트 줄 (금빛) */
+  const lx1=s*0.30, lx2=s*0.76;
+  [[s*0.46,lx2],[s*0.55,lx2],[s*0.63,lx2],[s*0.72,lx1+(lx2-lx1)*0.55]].forEach(([y,x2])=>{
+    ln(g, lx1, y, x2, y, 'rgba(160,130,60,0.22)', s*0.020);
+  });
+
+  /* 금색 책갈피 */
+  g.beginPath();
+  g.moveTo(s*0.67, s*0.30); g.lineTo(s*0.76, s*0.30);
+  g.lineTo(s*0.76, s*0.46); g.lineTo(s*0.715, s*0.42); g.lineTo(s*0.67, s*0.46);
+  g.closePath();
+  const rb = g.createLinearGradient(s*0.67, 0, s*0.76, 0);
+  rb.addColorStop(0, '#b8920a'); rb.addColorStop(0.5, '#e0b420'); rb.addColorStop(1, '#b8920a');
+  g.fillStyle=rb; g.fill();
+
+  /* 책 표지 위 달 + 별 문양 */
+  const bx=s*0.51, by=s*0.425, br=s*0.058;
+  // 달 그림자
+  const mog = g.createRadialGradient(bx,by,0,bx,by,br*1.4);
+  mog.addColorStop(0,'rgba(200,160,50,0.2)'); mog.addColorStop(1,'rgba(200,160,50,0)');
+  g.beginPath(); g.arc(bx,by,br*1.4,0,Math.PI*2); g.fillStyle=mog; g.fill();
+  // 달
+  g.beginPath(); g.arc(bx, by, br, 0, Math.PI*2);
+  g.fillStyle='rgba(200,160,50,0.22)'; g.fill();
+  g.beginPath(); g.arc(bx+br*0.38, by-br*0.08, br*0.78, 0, Math.PI*2);
+  g.fillStyle='rgba(245,238,223,0.92)'; g.fill();
+  // 별
+  star(g, bx+br*1.35, by-br*0.75, br*0.19, 'rgba(210,175,60,0.75)');
+  star(g, bx-br*0.28, by+br*1.15, br*0.13, 'rgba(210,175,60,0.55)');
+  star(g, bx+br*0.95, by+br*1.0,  br*0.10, 'rgba(210,175,60,0.45)');
+}
+
+function star(g, cx, cy, r, color) {
+  g.fillStyle=color; g.beginPath();
+  for (let i=0; i<5; i++) {
+    const ao = i*Math.PI*2/5 - Math.PI/2;
+    const ai = ao + Math.PI/5;
+    if (i===0) g.moveTo(cx+Math.cos(ao)*r, cy+Math.sin(ao)*r);
+    else        g.lineTo(cx+Math.cos(ao)*r, cy+Math.sin(ao)*r);
+    g.lineTo(cx+Math.cos(ai)*r*0.38, cy+Math.sin(ai)*r*0.38);
+  }
+  g.closePath(); g.fill();
+}
+
+/* ── 다운로드 ── */
+function download(id, name) {
+  const c = document.getElementById(id);
+  const a = document.createElement('a');
+  a.download = `apple-touch-icon_${name}.png`;
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+
+/* ── 렌더링 ── */
+drawGreen(document.getElementById('c1'));
+drawCherry(document.getElementById('c2'));
+drawMoon(document.getElementById('c3'));
+</script>
+</body>
+</html>
