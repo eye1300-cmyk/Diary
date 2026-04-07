@@ -840,8 +840,21 @@ function setSyncDot(state) {
 /* ════════════════════════════════════════════
    DATA LAYER
 ════════════════════════════════════════════ */
-function loadLocal()  { try { return JSON.parse(localStorage.getItem(LS_DATA)) || {}; } catch { return {}; } }
-function storeLocal(d) { try { localStorage.setItem(LS_DATA, JSON.stringify(d)); } catch(e) { toast('저장 실패: 저장 공간 부족'); } }
+let _memCache = null; // 메모리 캐시 (localStorage 용량 부족 시 대체)
+
+function loadLocal() {
+  if (_memCache !== null) return _memCache;
+  try { return JSON.parse(localStorage.getItem(LS_DATA)) || {}; } catch { return {}; }
+}
+function storeLocal(d) {
+  _memCache = d; // 항상 메모리에 저장
+  try {
+    localStorage.setItem(LS_DATA, JSON.stringify(d));
+  } catch(e) {
+    if (!useFirebase) toast('저장 실패: 저장 공간 부족');
+    // Firebase 모드에서는 메모리 캐시로 충분 (Firebase가 원본 데이터 보유)
+  }
+}
 
 async function saveEntryData(dateKey, entryId, data) {
   const all = loadLocal();
