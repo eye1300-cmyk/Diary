@@ -115,7 +115,10 @@ body {
 .sn    { font-size: 18px; font-weight: 700; color: var(--primary); }
 .sl    { font-size: 10px; color: var(--t3); margin-top: 1px; }
 .cat-stats { display: flex; gap: 6px; padding: 0 12px 8px; flex-shrink: 0; flex-wrap: wrap; }
-.cat-stat  { display: flex; align-items: center; gap: 3px; background: var(--bg); border-radius: 8px; padding: 4px 8px; font-size: 11px; color: var(--t2); }
+.cat-stat  { display: flex; align-items: center; gap: 3px; background: var(--bg); border-radius: 8px; padding: 4px 8px; font-size: 11px; color: var(--t2); cursor: pointer; transition: all .15s; user-select: none; }
+.cat-stat:hover { background: var(--border); }
+.cat-stat.active { background: var(--primary); color: #fff; }
+.cat-stat.active .cat-stat-n { color: #fff; }
 .cat-stat-n { font-weight: 700; color: var(--primary); margin-left: 2px; }
 
 /* Date entry list */
@@ -603,7 +606,8 @@ let db = null;
 let useFirebase = false;
 let syncKey = '';
 
-let selEntry = null; // selected entry ID within the date
+let selEntry = null;  // selected entry ID within the date
+let filterCat = null; // null = 이번 달, string = 카테고리 전체 필터
 
 let pendingPhotos = []; // {file, previewUrl} — photos selected but not yet saved
 let firstFbLoad = true; // pick today on first Firebase data load
@@ -871,6 +875,13 @@ function parseDK(key) {
 function fmtFull(key)  { const {y,m,d,date}=parseDK(key); return `${y}년 ${m}월 ${d}일 ${WDL[date.getDay()]}`; }
 function fmtShort(key) { const {m,d,date}=parseDK(key); return `${m}월 ${d}일 (${WDS[date.getDay()]})`; }
 
+function setCatFilter(catId) {
+  filterCat = filterCat === catId ? null : catId; // 같은 거 클릭 시 해제
+  const entries = loadLocal();
+  renderStats(entries);
+  renderEList(entries);
+}
+
 /* ════════════════════════════════════════════
    MOBILE
 ════════════════════════════════════════════ */
@@ -951,23 +962,35 @@ function renderStats(entries) {
         if ((e.category || '') === c.id) count++;
       });
     });
-    return `<div class="cat-stat">${c.icon} ${c.id}<span class="cat-stat-n">${count}</span></div>`;
+    return `<div class="cat-stat${filterCat===c.id?' active':''}" data-cat="${c.id}">${c.icon} ${c.id}<span class="cat-stat-n">${count}</span></div>`;
   }).join('');
+  cs.querySelectorAll('.cat-stat').forEach(el => {
+    el.addEventListener('click', () => setCatFilter(el.dataset.cat));
+  });
 }
 
 function renderEList(entries) {
-  const pfx   = `${vy}-${String(vm+1).padStart(2,'0')}`;
-  const items = Object.entries(entries)
-    .filter(([k]) => k.startsWith(pfx))
-    .sort(([a],[b]) => b.localeCompare(a));
-  const el = document.getElementById('EL');
+  const el  = document.getElementById('EL');
+  const hd  = document.querySelector('.el-hd');
   el.innerHTML = '';
+
+  let items;
+  if (filterCat) {
+    hd.textContent = `${getCatIcon(filterCat)} ${filterCat} 전체 보기`;
+    items = Object.entries(entries).sort(([a],[b]) => b.localeCompare(a));
+  } else {
+    hd.textContent = '이번 달 일기';
+    const pfx = `${vy}-${String(vm+1).padStart(2,'0')}`;
+    items = Object.entries(entries).filter(([k]) => k.startsWith(pfx)).sort(([a],[b]) => b.localeCompare(a));
+  }
+
   if (!items.length) {
-    el.innerHTML = '<div style="color:var(--t3);font-size:12px;text-align:center;padding:14px 0">이번 달 일기가 없습니다</div>';
+    el.innerHTML = `<div style="color:var(--t3);font-size:12px;text-align:center;padding:14px 0">${filterCat ? '해당 카테고리 일기가 없습니다' : '이번 달 일기가 없습니다'}</div>`;
     return;
   }
   items.forEach(([key, dateVal]) => {
     const dateEntries = Object.entries(readDateEntries(dateVal))
+      .filter(([, e]) => !filterCat || (e.category || '') === filterCat)
       .sort(([a],[b]) => a.localeCompare(b));
     dateEntries.forEach(([entryId, e]) => {
       const div = document.createElement('div');
@@ -1009,6 +1032,7 @@ function pickDate(key) {
   pendingPhotos = [];
   sel = key;
   selEntry = null;
+  filterCat = null;
   renderCal();
   renderDateEntries(key);
   renderEd();
